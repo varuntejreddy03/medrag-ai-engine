@@ -1,0 +1,10 @@
+flask
+gunicorn
+python-dotenv
+requests
+huggingface-hub
+sentence-transformers
+transformers
+torch
+faiss-cpu
+numpy
