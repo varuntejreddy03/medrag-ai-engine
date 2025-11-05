@@ -288,10 +288,16 @@ Respond **only with the formatted structured markdown**, no explanations outside
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status":"ok","faiss_vectors": faiss_index.ntotal if faiss_index else None})
+    return jsonify({
+        "status":"ok" if embedder else "loading",
+        "faiss_vectors": faiss_index.ntotal if faiss_index else None,
+        "components_loaded": embedder is not None
+    })
 
 @app.route("/diagnose", methods=["POST"])
 def diagnose():
+    if embedder is None:
+        return jsonify({"error":"system not ready, components still loading"}), 503
     payload = request.get_json(silent=True) or {}
     query = payload.get("query","").strip()
     if not query:
@@ -299,8 +305,13 @@ def diagnose():
     result = medrag_reasoning(query, k=int(payload.get("k",5)))
     return jsonify(result)
 
-if __name__ == "__main__":
-    LOG.info("Starting MedRAG engine startup...")
+# Load components on startup
+LOG.info("Starting MedRAG engine startup...")
+try:
     load_components()
+except Exception as e:
+    LOG.error("Failed to load components: %s", e)
+
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port)
